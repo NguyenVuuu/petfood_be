@@ -4,7 +4,6 @@ const sessionSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
       required: true,
       index: true,
     },
@@ -14,7 +13,6 @@ const sessionSchema = new mongoose.Schema(
       unique: true,
     },
     expiresAt: {
-      // lưu thời gian hết hạn của refreshToken
       type: Date,
       required: true,
     },
@@ -24,7 +22,6 @@ const sessionSchema = new mongoose.Schema(
   }
 );
 
-// MongoDB tự động xóa document khi expiresAt <= now
 sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model("Session", sessionSchema);

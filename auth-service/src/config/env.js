@@ -8,6 +8,7 @@ const requiredEnvVars = [
   "AUTH_MONGODB_URI",
   "JWT_SECRET",
   "JWT_REFRESH_SECRET",
+  "USER_SERVICE_URL",
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -25,4 +26,6 @@ module.exports = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
   corsOrigin: process.env.AUTH_CORS_ORIGIN || "*",
+  userServiceUrl: process.env.USER_SERVICE_URL,
+  userServiceTimeoutMs: Number(process.env.AUTH_USER_SERVICE_TIMEOUT_MS || 5000),
 };

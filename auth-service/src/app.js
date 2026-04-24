@@ -28,6 +28,7 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.use("/auth", authRoutes);
 app.use("/api/auth", authRoutes);
 
 app.use((req, res) => {

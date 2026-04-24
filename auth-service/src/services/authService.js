@@ -1,54 +1,54 @@
+const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-const User = require("../models/User");
-const Session = require("../models/Session");
+const sessionRepository = require("../repositories/sessionRepository");
 const {
   signAccessToken,
   signRefreshToken,
   verifyRefreshToken,
   refreshTokenExpiryMs,
 } = require("../utils/token");
-const { formatUser } = require("../utils/formatUser");
+const userClient = require("./userClient");
 
-/** Tạo session mới và lưu refreshToken vào DB */
 const createSession = async (userId) => {
   const refreshToken = signRefreshToken(userId);
   const expiresAt = new Date(Date.now() + refreshTokenExpiryMs());
 
-  await Session.create({ userId, refreshToken, expiresAt });
+  await sessionRepository.create({ userId, refreshToken, expiresAt });
 
   return refreshToken;
 };
 
+const normalizeUser = (user) => ({
+  id: String(user.id || user._id),
+  fullName: user.fullName,
+  email: user.email,
+  role: user.role,
+  isActive: user.isActive,
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt,
+});
+
 const register = async ({ fullName, email, password }) => {
-  const normalizedEmail = email.toLowerCase();
-  const existingUser = await User.findOne({ email: normalizedEmail });
-
-  if (existingUser) {
-    const error = new Error("Email already exists");
-    error.statusCode = 409;
-    throw error;
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-  const user = await User.create({
-    fullName,
-    email: normalizedEmail,
-    password: hashedPassword,
-  });
+  const user = await userClient.createUser({ fullName, email, password });
 
   const accessToken = signAccessToken(user);
-  const refreshToken = await createSession(user._id);
+  const refreshToken = await createSession(user.id);
 
-  return { accessToken, refreshToken, user: formatUser(user) };
+  return { accessToken, refreshToken, user: normalizeUser(user) };
 };
 
 const login = async ({ email, password }) => {
   const normalizedEmail = email.toLowerCase();
-  const user = await User.findOne({ email: normalizedEmail });
 
-  if (!user) {
-    const error = new Error("Invalid email or password");
-    error.statusCode = 401;
+  let user;
+  try {
+    user = await userClient.getUserByEmail(normalizedEmail);
+  } catch (error) {
+    if (error.statusCode === 404) {
+      const authError = new Error("Invalid email or password");
+      authError.statusCode = 401;
+      throw authError;
+    }
     throw error;
   }
 
@@ -61,30 +61,16 @@ const login = async ({ email, password }) => {
   }
 
   const accessToken = signAccessToken(user);
-  const refreshToken = await createSession(user._id);
+  const refreshToken = await createSession(user.id);
 
-  return { accessToken, refreshToken, user: formatUser(user) };
+  return { accessToken, refreshToken, user: normalizeUser(user) };
 };
 
 const getProfile = async (userId) => {
-  const user = await User.findById(userId).select("-password");
-
-  if (!user) {
-    const error = new Error("User not found");
-    error.statusCode = 404;
-    throw error;
-  }
-
-  return formatUser(user);
+  const user = await userClient.getUserById(userId);
+  return normalizeUser(user);
 };
 
-/**
- * Refresh token rotation:
- * - Xác thực refreshToken cũ
- * - Tìm và xóa session cũ trong DB
- * - Tạo session mới với refreshToken mới
- * - Trả về accessToken mới + refreshToken mới
- */
 const refresh = async (oldRefreshToken) => {
   if (!oldRefreshToken) {
     const error = new Error("Refresh token not found");
@@ -101,7 +87,7 @@ const refresh = async (oldRefreshToken) => {
     throw error;
   }
 
-  const session = await Session.findOneAndDelete({
+  const session = await sessionRepository.findOneAndDelete({
     refreshToken: oldRefreshToken,
   });
 
@@ -111,24 +97,17 @@ const refresh = async (oldRefreshToken) => {
     throw error;
   }
 
-  const user = await User.findById(payload.sub).select("-password");
-
-  if (!user) {
-    const error = new Error("User not found");
-    error.statusCode = 401;
-    throw error;
-  }
+  const user = await userClient.getUserById(payload.sub);
 
   const accessToken = signAccessToken(user);
-  const newRefreshToken = await createSession(user._id);
+  const newRefreshToken = await createSession(user.id);
 
   return { accessToken, refreshToken: newRefreshToken };
 };
 
-/** Xóa session khỏi DB khi logout */
 const logout = async (refreshToken) => {
   if (refreshToken) {
-    await Session.findOneAndDelete({ refreshToken });
+    await sessionRepository.findOneAndDelete({ refreshToken });
   }
 };
 
