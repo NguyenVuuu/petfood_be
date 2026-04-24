@@ -22,6 +22,7 @@ const updateProductSchema = Joi.object({
 
 const listProductSchema = Joi.object({
   keyword: Joi.string().trim().allow(""),
+  categoryId: Joi.string().trim().pattern(objectIdPattern),
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(10),
   sortBy: Joi.string()

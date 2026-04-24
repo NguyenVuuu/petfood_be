@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 const slugify = require("slugify");
 const Product = require("../models/Product");
-const { uploadProductImage, deleteProductImage } = require("./s3Service");
+const { uploadProductImage, deleteProductImage } = require("./uploadClient");
+const { ensureActiveCategory } = require("./categoryClient");
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -51,24 +52,31 @@ const createProduct = async (payload, imageFile) => {
   const uploadedImage = await uploadProductImage(imageFile);
 
   try {
+    const normalizedCategoryId = normalizeCategoryId(payload.categoryId);
+    await ensureActiveCategory(normalizedCategoryId);
+
     const slug = await generateUniqueSlug(payload.name);
 
     const product = await Product.create({
       ...payload,
       slug,
-      categoryId: normalizeCategoryId(payload.categoryId),
+      categoryId: normalizedCategoryId,
       imageUrl: uploadedImage.url,
       imageKey: uploadedImage.key,
+      imageProvider: uploadedImage.provider || "s3",
     });
 
     return product;
   } catch (error) {
-    await deleteProductImage(uploadedImage.key).catch(() => null);
+    await deleteProductImage({
+      provider: uploadedImage.provider,
+      key: uploadedImage.key,
+    }).catch(() => null);
     throw error;
   }
 };
 
-const listProducts = async ({ keyword, page, limit, sortBy, sortOrder }) => {
+const listProducts = async ({ keyword, categoryId, page, limit, sortBy, sortOrder }) => {
   const filter = {};
 
   if (keyword) {
@@ -76,6 +84,10 @@ const listProducts = async ({ keyword, page, limit, sortBy, sortOrder }) => {
       $regex: escapeRegex(keyword),
       $options: "i",
     };
+  }
+
+  if (categoryId) {
+    filter.categoryId = categoryId;
   }
 
   const skip = (page - 1) * limit;
@@ -123,6 +135,7 @@ const updateProduct = async (productId, payload, imageFile) => {
   }
 
   const oldImageKey = product.imageKey;
+  const oldImageProvider = product.imageProvider || "s3";
   let uploadedImage = null;
 
   if (imageFile) {
@@ -130,6 +143,12 @@ const updateProduct = async (productId, payload, imageFile) => {
   }
 
   try {
+    if (payload.categoryId !== undefined) {
+      const normalizedCategoryId = normalizeCategoryId(payload.categoryId);
+      await ensureActiveCategory(normalizedCategoryId);
+      payload.categoryId = normalizedCategoryId;
+    }
+
     if (payload.name && payload.name !== product.name) {
       product.slug = await generateUniqueSlug(payload.name, productId);
     }
@@ -139,25 +158,32 @@ const updateProduct = async (productId, payload, imageFile) => {
     if (payload.price !== undefined) product.price = payload.price;
     if (payload.stock !== undefined) product.stock = payload.stock;
     if (payload.categoryId !== undefined) {
-      product.categoryId = normalizeCategoryId(payload.categoryId);
+      product.categoryId = payload.categoryId;
     }
     if (payload.isActive !== undefined) product.isActive = payload.isActive;
 
     if (uploadedImage) {
       product.imageKey = uploadedImage.key;
       product.imageUrl = uploadedImage.url;
+      product.imageProvider = uploadedImage.provider || "s3";
     }
 
     await product.save();
 
     if (uploadedImage && oldImageKey && oldImageKey !== uploadedImage.key) {
-      await deleteProductImage(oldImageKey).catch(() => null);
+      await deleteProductImage({
+        provider: oldImageProvider,
+        key: oldImageKey,
+      }).catch(() => null);
     }
 
     return product;
   } catch (error) {
     if (uploadedImage) {
-      await deleteProductImage(uploadedImage.key).catch(() => null);
+      await deleteProductImage({
+        provider: uploadedImage.provider,
+        key: uploadedImage.key,
+      }).catch(() => null);
     }
     throw error;
   }
@@ -175,7 +201,10 @@ const deleteProduct = async (productId) => {
   }
 
   await Product.deleteOne({ _id: productId });
-  await deleteProductImage(product.imageKey).catch(() => null);
+  await deleteProductImage({
+    provider: product.imageProvider || "s3",
+    key: product.imageKey,
+  }).catch(() => null);
 
   return product;
 };

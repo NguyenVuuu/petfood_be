@@ -31,7 +31,7 @@ const productSchema = new mongoose.Schema(
       min: 0,
     },
     categoryId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
       default: null,
       index: true,
     },
@@ -43,6 +43,12 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: true,
       index: true,
+    },
+    imageProvider: {
+      type: String,
+      required: true,
+      default: "s3",
+      enum: ["s3", "cloudinary"],
     },
     isActive: {
       type: Boolean,
