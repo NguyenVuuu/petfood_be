@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "petfood-cart-service",
   "version": "1.0.0",
   "private": true,
@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "jest --runInBand"
+    "test": "node ./node_modules/jest/bin/jest.js --runInBand"
   },
   "dependencies": {
     "axios": "^1.11.0",
@@ -16,6 +16,7 @@
     "express": "^4.21.2",
     "helmet": "^7.2.0",
     "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.1",
     "morgan": "^1.10.0"
   },
