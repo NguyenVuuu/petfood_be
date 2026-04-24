@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "petfood-category-service",
   "version": "1.0.0",
   "private": true,
@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "jest --runInBand"
+    "test": "node ./node_modules/jest/bin/jest.js --runInBand",
+    "seed": "node src/seeds/seedCategories.js"
   },
   "dependencies": {
     "compression": "^1.7.4",
