@@ -168,6 +168,25 @@ const restoreUser = async (req, res, next) => {
   }
 };
 
+const toggleUserStatus = async (req, res, next) => {
+  try {
+    const { id } = await idParamSchema.validateAsync(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+      convert: true,
+    });
+
+    const user = await userService.toggleUserStatus(id);
+
+    return res.status(200).json({
+      message: "Toggle user status successful",
+      user,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createUser,
   getUserById,
@@ -178,4 +197,5 @@ module.exports = {
   listUsers,
   updateUserRole,
   restoreUser,
+  toggleUserStatus,
 };

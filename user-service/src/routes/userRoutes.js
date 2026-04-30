@@ -14,6 +14,7 @@ router.patch("/me/password", requireAuth, userController.changeMyPassword);
 router.get("/", requireAuth, requireAdmin, userController.listUsers);
 router.patch("/:id/role", requireAuth, requireAdmin, userController.updateUserRole);
 router.patch("/:id/restore", requireAuth, requireAdmin, userController.restoreUser);
+router.patch("/:id/toggle-status", requireAuth, requireAdmin, userController.toggleUserStatus);
 
 // Internal/auth-service endpoints
 router.post("/", userController.createUser);

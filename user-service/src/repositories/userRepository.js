@@ -7,13 +7,25 @@ const findById = async (id) => User.findById(id);
 const findByEmail = async (email) => User.findOne({ email });
 
 const listUsers = async ({ page, limit, email }) => {
-  const filter = {};
+  const filter = {
+    role: "user", // Only show users, not admins
+  };
 
   if (email) {
-    filter.email = {
-      $regex: email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-      $options: "i",
-    };
+    filter.$or = [
+      {
+        email: {
+          $regex: email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          $options: "i",
+        },
+      },
+      {
+        fullName: {
+          $regex: email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          $options: "i",
+        },
+      },
+    ];
   }
 
   const skip = (page - 1) * limit;

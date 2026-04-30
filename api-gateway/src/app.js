@@ -8,6 +8,7 @@ const { createProxyMiddleware } = require("http-proxy-middleware");
 const {
   corsOrigin,
   authServiceUrl,
+  userServiceUrl,
   productServiceUrl,
   cartServiceUrl,
   categoryServiceUrl,
@@ -69,6 +70,7 @@ app.get("/api/health", (req, res) => {
     gateway: "ok",
     routes: {
       auth: "/api/auth/*",
+      users: "/api/users/*",
       product: "/api/products/*",
       cart: "/api/cart/*",
       category: "/api/categories/*",
@@ -78,6 +80,7 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api", apiLimiter);
 app.use("/api/auth", createServiceProxy("auth-service", authServiceUrl, "/api/auth"));
+app.use("/api/users", createServiceProxy("user-service", userServiceUrl, "/api/users"));
 app.use(
   "/api/products",
   createServiceProxy("product-service", productServiceUrl, "/api/products")

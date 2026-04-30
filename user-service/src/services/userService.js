@@ -156,6 +156,23 @@ const restoreUser = async (userId) => {
   return formatUser(user);
 };
 
+const toggleUserStatus = async (userId) => {
+  ensureObjectId(userId);
+
+  const user = await userRepository.findById(userId);
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  user.isActive = !user.isActive;
+  await user.save();
+
+  return formatUser(user);
+};
+
 module.exports = {
   createUser,
   getProfile,
@@ -165,4 +182,5 @@ module.exports = {
   listUsers,
   updateRole,
   restoreUser,
+  toggleUserStatus,
 };

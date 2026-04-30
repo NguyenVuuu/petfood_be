@@ -4,7 +4,7 @@ const dotenv = require("dotenv");
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
-const requiredEnvVars = ["AUTH_SERVICE_URL", "PRODUCT_SERVICE_URL", "CART_SERVICE_URL", "CATEGORY_SERVICE_URL"];
+const requiredEnvVars = ["AUTH_SERVICE_URL", "USER_SERVICE_URL", "PRODUCT_SERVICE_URL", "CART_SERVICE_URL", "CATEGORY_SERVICE_URL"];
 
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
@@ -17,6 +17,7 @@ module.exports = {
   port: Number(process.env.API_GATEWAY_PORT || 3000),
   corsOrigin: process.env.API_GATEWAY_CORS_ORIGIN || "*",
   authServiceUrl: process.env.AUTH_SERVICE_URL,
+  userServiceUrl: process.env.USER_SERVICE_URL,
   productServiceUrl: process.env.PRODUCT_SERVICE_URL,
   cartServiceUrl: process.env.CART_SERVICE_URL,
   categoryServiceUrl: process.env.CATEGORY_SERVICE_URL,
