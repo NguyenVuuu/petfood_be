@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "petfood-order-service",
   "version": "1.0.0",
   "private": true,
@@ -15,6 +15,7 @@
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
     "joi": "^17.13.3",
     "mongoose": "^8.19.1",
     "morgan": "^1.10.0"

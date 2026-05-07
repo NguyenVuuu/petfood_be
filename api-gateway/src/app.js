@@ -11,6 +11,7 @@ const {
   productServiceUrl,
   cartServiceUrl,
   categoryServiceUrl,
+  orderServiceUrl,
   uploadServiceUrl,
   userServiceUrl,
   rateLimitWindowMs,
@@ -74,6 +75,7 @@ app.get("/api/health", (req, res) => {
       product: "/api/products/*",
       cart: "/api/cart/*",
       category: "/api/categories/*",
+      orders: "/api/orders/*",
       users: "/api/users/*",
     },
   });
@@ -95,6 +97,10 @@ app.use(
 app.use(
   "/api/categories",
   createServiceProxy("category-service", categoryServiceUrl, "/api/categories"),
+);
+app.use(
+  "/api/orders",
+  createServiceProxy("order-service", orderServiceUrl, "/api/orders"),
 );
 app.use(
   "/api/upload",

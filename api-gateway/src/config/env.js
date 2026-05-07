@@ -9,6 +9,7 @@ const requiredEnvVars = [
   "PRODUCT_SERVICE_URL",
   "CART_SERVICE_URL",
   "CATEGORY_SERVICE_URL",
+  "ORDER_SERVICE_URL",
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -25,6 +26,7 @@ module.exports = {
   productServiceUrl: process.env.PRODUCT_SERVICE_URL,
   cartServiceUrl: process.env.CART_SERVICE_URL,
   categoryServiceUrl: process.env.CATEGORY_SERVICE_URL,
+  orderServiceUrl: process.env.ORDER_SERVICE_URL,
   uploadServiceUrl: process.env.UPLOAD_SERVICE_URL || "http://localhost:3006",
   userServiceUrl: process.env.USER_SERVICE_URL || "http://localhost:3002",
   rateLimitWindowMs: Number(
