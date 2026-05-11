@@ -71,3 +71,8 @@ docker-compose.local.yml
 *.tgz
 .npm
 .eslintcache
+
+# ========================
+# Markdown files
+# ========================
+*.md

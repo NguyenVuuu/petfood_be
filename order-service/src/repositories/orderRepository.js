@@ -13,8 +13,8 @@ const findAll = ({ status, orderStatus, paymentStatus, page, limit }) => {
   const filter = {};
 
   if (status) filter.status = status;
-  if (orderStatus) filter.orderStatus = orderStatus;
-  if (paymentStatus) filter.paymentStatus = paymentStatus;
+  if (orderStatus) filter.orderStatus = { $regex: new RegExp(`^${orderStatus}$`, "i") };
+  if (paymentStatus) filter.paymentStatus = { $regex: new RegExp(`^${paymentStatus}$`, "i") };
 
   const skip = (page - 1) * limit;
 
@@ -24,11 +24,11 @@ const findAll = ({ status, orderStatus, paymentStatus, page, limit }) => {
   ]);
 };
 
+// Lấy các order chưa xác nhận: paymentStatus pending (chưa thanh toán)
 const findWaitingForProcessing = ({ page, limit }) => {
   const skip = (page - 1) * limit;
   const filter = {
-    paymentStatus: "PAID",
-    orderStatus: "WAITING_FOR_PROCESSING",
+    paymentStatus: { $regex: /^pending$/i },
   };
 
   return Promise.all([

@@ -14,6 +14,7 @@ const {
   orderServiceUrl,
   uploadServiceUrl,
   userServiceUrl,
+  paymentServiceUrl,
   rateLimitWindowMs,
   rateLimitMax,
 } = require("./config/env");
@@ -47,7 +48,11 @@ const createServiceProxy = (serviceName, target, prefixPath) =>
     xfwd: true,
     proxyTimeout: 30000,
     timeout: 30000,
-    pathRewrite: (path) => `${prefixPath}${path === "/" ? "" : path}`,
+    pathRewrite: (path) => {
+      // Strip trailing slash (except root) to avoid route mismatch
+      const cleanPath = path === "/" ? "" : path.replace(/\/$/, "");
+      return `${prefixPath}${cleanPath}`;
+    },
     on: {
       error: (error, req, res) => {
         if (!res.headersSent) {
@@ -114,6 +119,10 @@ app.use(
 app.use(
   "/api/users",
   createServiceProxy("user-service", userServiceUrl, "/api/users"),
+);
+app.use(
+  "/api/payments",
+  createServiceProxy("payment-service", paymentServiceUrl, "/api/payments"),
 );
 
 app.use((req, res) => {

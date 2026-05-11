@@ -29,6 +29,7 @@ module.exports = {
   orderServiceUrl: process.env.ORDER_SERVICE_URL,
   uploadServiceUrl: process.env.UPLOAD_SERVICE_URL || "http://localhost:3006",
   userServiceUrl: process.env.USER_SERVICE_URL || "http://localhost:3002",
+  paymentServiceUrl: process.env.PAYMENT_SERVICE_URL || "http://localhost:3009",
   rateLimitWindowMs: Number(
     process.env.API_GATEWAY_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000,
   ),
