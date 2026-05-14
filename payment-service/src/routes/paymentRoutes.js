@@ -1,9 +1,31 @@
 const express = require("express");
 const paymentController = require("../controllers/paymentController");
-const { requireUserAuth, requireAdmin } = require("../middlewares/authMiddleware");
+const {
+  requireUserAuth,
+  requireAdmin,
+  requireInternal,
+} = require("../middlewares/authMiddleware");
 const { upload } = require("../middlewares/uploadMiddleware");
 
 const router = express.Router();
+
+router.post(
+  "/payments/banking/init",
+  requireInternal,
+  paymentController.initBankingPayment,
+);
+
+router.patch(
+  "/payments/banking/order/:orderId/fail",
+  requireInternal,
+  paymentController.failBankingPaymentByOrder,
+);
+
+router.patch(
+  "/payments/banking/order/:orderId/expire",
+  requireInternal,
+  paymentController.expireBankingPaymentByOrder,
+);
 
 router.post(
   "/payments/banking/upload-proof",
@@ -28,6 +50,28 @@ router.patch(
 
 router.patch(
   "/admin/payments/:id/reject",
+  requireUserAuth,
+  requireAdmin,
+  paymentController.rejectPayment,
+);
+
+// Compatibility aliases for gateway paths mounted under /api/payments/admin/...
+router.get(
+  "/payments/admin/payments/banking/pending",
+  requireUserAuth,
+  requireAdmin,
+  paymentController.listPendingBankingPayments,
+);
+
+router.patch(
+  "/payments/admin/payments/:id/approve",
+  requireUserAuth,
+  requireAdmin,
+  paymentController.approvePayment,
+);
+
+router.patch(
+  "/payments/admin/payments/:id/reject",
   requireUserAuth,
   requireAdmin,
   paymentController.rejectPayment,
