@@ -68,8 +68,17 @@ const requireAuthForCouponRoutes = (req, res, next) => {
 };
 
 const requireAdminForCouponManagement = (req, res, next) => {
-  const isMyCouponEndpoint = req.method === "GET" && req.path.startsWith("/my");
-  if (isMyCouponEndpoint) {
+  const couponPath = req.path.startsWith("/api/coupons")
+    ? req.path.replace("/api/coupons", "") || "/"
+    : req.path;
+  const userAllowedRoutes = [
+    req.method === "GET" && couponPath.startsWith("/my"),
+    req.method === "GET" && couponPath.startsWith("/public"),
+    req.method === "GET" && couponPath.startsWith("/available"),
+    req.method === "POST" && couponPath === "/validate",
+  ];
+
+  if (userAllowedRoutes.some(Boolean)) {
     return next();
   }
 

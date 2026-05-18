@@ -6,6 +6,7 @@ const createOrderSchema = Joi.object({
   selectedCartItemIds: Joi.array().items(objectId.required()).min(1).unique().required(),
   paymentMethod: Joi.string().valid("cash", "banking").required(),
   addressId: objectId.required(),
+  couponCode: Joi.string().trim().uppercase().min(3).max(50).allow("").optional(),
   notes: Joi.string().trim().max(1000).allow("").optional(),
 });
 

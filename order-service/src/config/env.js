@@ -13,6 +13,8 @@ const requiredEnvVars = [
   "PAYMENT_SERVICE_URL",
   "CART_SERVICE_URL",
   "CART_INTERNAL_KEY",
+  "COUPON_SERVICE_URL",
+  "COUPON_INTERNAL_KEY",
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -42,4 +44,7 @@ module.exports = {
   cartServiceUrl: process.env.CART_SERVICE_URL,
   cartInternalKey: process.env.CART_INTERNAL_KEY,
   cartServiceTimeoutMs: Number(process.env.ORDER_CART_SERVICE_TIMEOUT_MS || 5000),
+  couponServiceUrl: process.env.COUPON_SERVICE_URL,
+  couponInternalKey: process.env.COUPON_INTERNAL_KEY,
+  couponServiceTimeoutMs: Number(process.env.ORDER_COUPON_SERVICE_TIMEOUT_MS || 5000),
 };

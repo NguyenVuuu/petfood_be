@@ -11,6 +11,9 @@ const {
   cartServiceUrl,
   cartInternalKey,
   cartServiceTimeoutMs,
+  couponServiceUrl,
+  couponInternalKey,
+  couponServiceTimeoutMs,
 } = require("../config/env");
 
 const createError = (message, statusCode = 400) => {
@@ -37,6 +40,13 @@ const calculateTotalAmount = (items) =>
   items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
 const bankingExpiryDate = () => new Date(Date.now() + 24 * 60 * 60 * 1000);
+const BASE_SHIPPING_FEE = 30000;
+const FREE_SHIPPING_THRESHOLD = 500000;
+
+const calculateShipping = (subtotal) => ({
+  shippingFee: BASE_SHIPPING_FEE,
+  shippingDiscount: subtotal >= FREE_SHIPPING_THRESHOLD ? BASE_SHIPPING_FEE : 0,
+});
 
 const ensureOrderOwnership = (order, auth) => {
   const isOwner = order.userId.toString() === auth.sub;
@@ -292,6 +302,68 @@ const expireBankingPayment = async ({ orderId }) => {
   }
 };
 
+const validateCouponForOrder = async ({ userId, couponCode, orderAmount, shippingFee }) => {
+  if (!couponCode) {
+    return {
+      couponCode: "",
+      couponDiscount: 0,
+      couponShippingDiscount: 0,
+    };
+  }
+
+  try {
+    const { data } = await axios.post(
+      `${couponServiceUrl}/api/coupons/internal/validate`,
+      { code: couponCode, orderAmount, shippingFee },
+      {
+        timeout: couponServiceTimeoutMs,
+        headers: {
+          "x-internal-key": couponInternalKey,
+          "x-user-id": userId,
+        },
+      },
+    );
+
+    if (!data.valid) {
+      throw createError(data.message || "Coupon is not valid", 400);
+    }
+
+    return {
+      couponCode: data.coupon?.code || couponCode,
+      couponDiscount: Number(data.discountAmount || 0),
+      couponShippingDiscount: Number(data.shippingDiscount || 0),
+    };
+  } catch (error) {
+    if (error.statusCode) throw error;
+    if (error.response) {
+      throw createError(error.response.data?.message || "Failed to validate coupon", error.response.status);
+    }
+    throw createError("coupon-service is unavailable", 502);
+  }
+};
+
+const markCouponUsed = async ({ userId, couponCode, orderId, orderAmount, shippingFee }) => {
+  if (!couponCode) return;
+
+  try {
+    await axios.post(
+      `${couponServiceUrl}/api/coupons/internal/mark-used`,
+      { userId, code: couponCode, orderId, orderAmount, shippingFee },
+      {
+        timeout: couponServiceTimeoutMs,
+        headers: {
+          "x-internal-key": couponInternalKey,
+        },
+      },
+    );
+  } catch (error) {
+    if (error.response) {
+      throw createError(error.response.data?.message || "Failed to mark coupon as used", error.response.status);
+    }
+    throw createError("coupon-service is unavailable", 502);
+  }
+};
+
 const createOrder = async (userId, payload) => {
   ensureObjectId(userId, "Invalid user id");
   ensureObjectId(payload.addressId, "Invalid address id");
@@ -307,7 +379,20 @@ const createOrder = async (userId, payload) => {
   });
 
   const items = checkoutItems.map(normalizeCheckoutItem);
-  const totalAmount = calculateTotalAmount(items);
+  const subtotal = calculateTotalAmount(items);
+  const { shippingFee, shippingDiscount: autoShippingDiscount } = calculateShipping(subtotal);
+  const couponResult = await validateCouponForOrder({
+    userId,
+    couponCode: payload.couponCode,
+    orderAmount: subtotal,
+    shippingFee: Math.max(0, shippingFee - autoShippingDiscount),
+  });
+  const shippingDiscount = Math.min(
+    shippingFee,
+    autoShippingDiscount + couponResult.couponShippingDiscount,
+  );
+  const couponDiscount = couponResult.couponDiscount;
+  const totalAmount = Math.max(0, subtotal + shippingFee - shippingDiscount - couponDiscount);
   const paymentStatus = payload.paymentMethod === "cash" ? "unpaid" : "pending";
   let order;
 
@@ -315,6 +400,11 @@ const createOrder = async (userId, payload) => {
     order = await orderRepository.create({
       userId,
       items,
+      subtotal,
+      shippingFee,
+      shippingDiscount,
+      couponCode: couponResult.couponCode,
+      couponDiscount,
       totalAmount,
       paymentMethod: payload.paymentMethod,
       paymentStatus,
@@ -339,6 +429,14 @@ const createOrder = async (userId, payload) => {
         nextAction: "UPLOAD_BANKING_PROOF",
       };
     }
+
+    await markCouponUsed({
+      userId,
+      couponCode: couponResult.couponCode,
+      orderId: order._id.toString(),
+      orderAmount: subtotal,
+      shippingFee: Math.max(0, shippingFee - autoShippingDiscount),
+    });
 
     return {
       order: orderPayload,
@@ -505,6 +603,19 @@ const updateCodPaymentStatus = async (orderId, paymentStatus) => {
 
   order.paymentStatus = "paid";
   await order.save();
+
+  if (order.couponCode) {
+    const autoShippingDiscount =
+      order.subtotal >= FREE_SHIPPING_THRESHOLD ? BASE_SHIPPING_FEE : 0;
+    await markCouponUsed({
+      userId: order.userId.toString(),
+      couponCode: order.couponCode,
+      orderId: order._id.toString(),
+      orderAmount: order.subtotal,
+      shippingFee: Math.max(0, order.shippingFee - autoShippingDiscount),
+    });
+  }
+
   return order.toObject();
 };
 
@@ -614,6 +725,19 @@ const updatePaymentStatusInternal = async (orderId, paymentStatus) => {
 
   order.paymentStatus = paymentStatus;
   await order.save();
+
+  if (paymentStatus === "paid" && order.couponCode) {
+    const autoShippingDiscount =
+      order.subtotal >= FREE_SHIPPING_THRESHOLD ? BASE_SHIPPING_FEE : 0;
+    await markCouponUsed({
+      userId: order.userId.toString(),
+      couponCode: order.couponCode,
+      orderId: order._id.toString(),
+      orderAmount: order.subtotal,
+      shippingFee: Math.max(0, order.shippingFee - autoShippingDiscount),
+    });
+  }
+
   return order.toObject();
 };
 
